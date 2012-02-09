@@ -1,0 +1,33 @@
+table { 
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+#controls { 
+	display: inline-block;
+	border: 1px solid black;
+}
+
+#controls table { 
+	padding: 10px;
+}
+
+#controls td { 
+	border: solid 10px white;
+}
+
+#controls td:hover { 
+	cursor: pointer;
+}
+
+#board td { 
+	border-width: 0;
+}
+
+td { 
+	padding: 3px 4px;
+}
+
+#rep {
+	display:none;
+}

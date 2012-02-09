@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>floodit.xsl</title>
+    <link rel="stylesheet" href="floodit.css" type="text/css" />
+    <script type="text/javascript" language="javascript" src="SaxonceDebug/Saxonce.nocache.js"></script>
+    <script type="application/xslt+xml" language="xslt2.0" src="floodit.xsl" data-initial-template="main"></script>
+  </head>
+  <body>
+    <section id="game">
+      <h1>floodit.xsl</h1>
+      <p>v1.0</p>
+      <div id="status"></div>
+      <div id="controls">Buttons</div>
+      <div id="steps-container">Step <span id="step">0</span>/<span id="maxsteps">25</span></div>
+      <div id="score-container">Score: <span id="score">0</span></div>
+      <div id="board">Rendered board</div>
+      <div id="rep">Internal Representation (hidden)</div>
+    </section>
+    <section id="instruction">
+      <p>Flood the board with one color in a limited number of steps. Begin in the top left square and start by selecting one of the colored squares in the black frame. This will change the color of the area, and expand to any adjacent spaces, allowing you to flood more of the board.</p>
+    </section>
+    <section id="credits">
+      <p>© 2012 <a href="http://gplus.to/gimsieke">Gerrit Imsieke</a>. Fork it on <a href="http://github.com/gimsieke/floodid">github</a></p>
+    </section>
+  </body>
+</html>
