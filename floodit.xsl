@@ -36,7 +36,7 @@
         <tbody>
           <tr>
             <xsl:for-each select="$colors[position() le $num-colors]">
-              <td id="{translate(., '#', '_')}" style="background-color:{.}">&#x2003;</td>
+              <td id="{translate(., '#', '_')}" style="background-color:{.}">&#xa0;</td>
             </xsl:for-each>
           </tr>
         </tbody>
@@ -240,7 +240,7 @@
 
   <xsl:template match="*:square" mode="render">
     <td style="background-color:{if (@color) then @color else ../@color}" data-coord="{@x}-{@y}">
-      &#x2003;
+      &#xa0;
 <!--       <xsl:value-of select="@x"/>-<xsl:value-of select="@y"/> -->
     </td>
   </xsl:template>
