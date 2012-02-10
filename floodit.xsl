@@ -4,7 +4,6 @@
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:fi="http://fischer-imsieke.de/namespace/floodit"
   xmlns:ixsl="http://saxonica.com/ns/interactiveXSLT"
-  xmlns:prop="http://saxonica.com/ns/html-property"
   extension-element-prefixes="ixsl"
   version="2.0"  
   exclude-result-prefixes="fi xs"
@@ -69,7 +68,7 @@
         <xsl:for-each select="1 to $size">
           <xsl:variable name="y" select="." as="xs:integer" />
           <xsl:variable name="rnd" select="fi:rnd()" as="xs:integer" />
-          <fi:square x="{$x}" y="{$y}" color="{$colors[$rnd]}" />
+          <fi:square x="{$x}" y="{$y}" color="{$colors[$rnd]}" nc="{fi:neighborcount($x, $y)}" />
         </xsl:for-each>
       </xsl:for-each>
     </fi:board>
@@ -86,9 +85,9 @@
 
   <!-- xsl:iterate might come in handy here. Without it, some recursion is necessary. -->
   <xsl:function name="fi:group-squares" as="element(*)+"><!-- result: (fi:square | fi:area)* -->
-    <xsl:param name="square" as="element(fi:square)*" />
-    <xsl:param name="basket" as="element(*)*" />
-    <xsl:param name="squares-and-areas" as="element(*)+" />
+    <xsl:param name="square" as="element(fi:square)*" /><!-- not necessarily a single square. Could be all squares of an area. -->
+    <xsl:param name="basket" as="element(*)*" /><!-- neighbors that have been grouped so far -->
+    <xsl:param name="squares-and-areas" as="element(*)+" /><!-- twofold: the intermediate result (area elements) and the yet ungrouped squares -->
 
     <xsl:choose>
       <xsl:when test="exists($square)"><!-- there are ungrouped squares yet -->
@@ -99,14 +98,14 @@
                     [every $sq in $basket satisfies (not($sq is .))]" />
         <xsl:choose>
           <xsl:when test="exists($neighbors)">
-            <xsl:sequence select="fi:group-squares($neighbors, ($square, $basket), $squares-and-areas)" />
+            <xsl:sequence select="fi:group-squares($neighbors, ($square union $basket), $squares-and-areas)" />
           </xsl:when>
           <xsl:otherwise>
             <xsl:variable name="new-squares-and-areas" as="element(*)+">
               <fi:area color="{$square[1]/@color}">
                 <xsl:apply-templates select="($basket union $square)" mode="group"/>
               </fi:area>
-              <xsl:sequence select="$squares-and-areas except ($basket, $square)" />
+              <xsl:sequence select="$squares-and-areas except ($square union $basket)" />
             </xsl:variable>
             <xsl:sequence select="fi:group-squares(($new-squares-and-areas/self::fi:square)[1], (), $new-squares-and-areas)" />
           </xsl:otherwise>
@@ -121,8 +120,8 @@
   <xsl:template match="fi:square/@color" mode="group" />
 
   <xsl:function name="fi:neighbors" as="element(*)*"><!-- fi:square or square -->
-    <xsl:param name="square" as="element(*)+" />
-    <xsl:param name="squares" as="element(*)+" />
+    <xsl:param name="square" as="element(*)+" /><!-- fi:square or square; a single one or all squares of an area -->
+    <xsl:param name="squares" as="element(*)+" /><!-- fi:square or square; the remainder of the board's squares -->
     <xsl:sequence select="for $sq in $square return
                           (
                             $squares[@x eq $sq/@x][abs(@y - $sq/@y) eq 1]
@@ -189,14 +188,36 @@
     <xsl:variable name="area" select="*:area[*:square[@x cast as xs:integer eq $x 
                                                       and 
                                                       @y cast as xs:integer eq $y]]" />
-    <xsl:variable name="target-neighboring-areas" select="fi:neighbors($area/*:square, (*:area except $area)/*:square)/..[@color eq $color]" as="element(*)*" />
+    <xsl:variable name="target-neighboring-areas" 
+      select="fi:neighbors(
+                $area/*:square[not(@inside)], 
+                (*:area except $area)/*:square[not(@inside)]
+              )/..[@color eq $color]" as="element(*)*" />
     <xsl:variable name="joinme" select="$area union $target-neighboring-areas" as="element(*)+" />
     <xsl:copy>
       <xsl:copy-of select="@*" />
       <fi:area color="{$color}">
-        <xsl:sequence select="$joinme/*:square" />
+        <xsl:apply-templates select="$joinme/*:square[not(@inside)]" mode="#current"/>
+        <xsl:sequence select="$joinme/*:square[@inside]"/>
       </fi:area>
       <xsl:sequence select="*:area except ($joinme)" />
+    </xsl:copy>
+  </xsl:template>
+
+  <xsl:function name="fi:neighborcount" as="xs:integer">
+    <xsl:param name="x" as="xs:integer" />
+    <xsl:param name="y" as="xs:integer" />
+    <xsl:variable name="x-fringe-reduction" select="if (min(($x, $board-size - $x + 1)) eq 1) then 1 else 0" as="xs:integer" />
+    <xsl:variable name="y-fringe-reduction" select="if (min(($y, $board-size - $y + 1)) eq 1) then 1 else 0" as="xs:integer" />
+    <xsl:sequence select="4 - $x-fringe-reduction - $y-fringe-reduction" />
+  </xsl:function>
+
+  <xsl:template match="*:square[not(@inside)]" mode="flood">
+    <xsl:copy>
+      <xsl:copy-of select="@*" />
+      <xsl:if test="count(fi:neighbors(., ../*:square)) eq xs:integer(@nc)">
+        <xsl:attribute name="inside" select="'yes'" />
+      </xsl:if>
     </xsl:copy>
   </xsl:template>
 
