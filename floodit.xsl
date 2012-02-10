@@ -245,7 +245,7 @@
     </td>
   </xsl:template>
 
-  <xsl:template match="@* | *" mode="#all">
+  <xsl:template match="@* | *" mode=" flood group render">
     <xsl:copy>
       <xsl:apply-templates select="@* | node()" mode="#current"/>
     </xsl:copy>
