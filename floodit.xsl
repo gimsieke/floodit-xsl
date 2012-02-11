@@ -4,6 +4,8 @@
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:fi="http://fischer-imsieke.de/namespace/floodit"
   xmlns:ixsl="http://saxonica.com/ns/interactiveXSLT"
+  xmlns:prop="http://saxonica.com/ns/html-property"
+  xmlns:style="http://saxonica.com/ns/html-style-property"
   extension-element-prefixes="ixsl"
   version="2.0"  
   exclude-result-prefixes="fi xs"
@@ -12,6 +14,8 @@
   <xsl:param name="board-size" as="xs:integer" select="14" />
   <xsl:param name="max-moves" as="xs:integer" select="25" />
   <xsl:param name="num-colors" as="xs:integer" select="6" />
+  <xsl:param name="hint-lookahead-depth" as="xs:integer" select="3" />
+  <xsl:param name="debug" as="xs:string" select="'no'" />
 
 
   <xsl:template name="main">
@@ -21,14 +25,55 @@
     <xsl:call-template name="step">
       <xsl:with-param name="count" select="0" />
     </xsl:call-template>
-    <xsl:variable name="initial-board" as="element(fi:board)" select="fi:create-board($board-size, $num-colors)" />
+    <xsl:variable name="initial-board" as="element(fi:board)" select="fi:group-board(fi:create-board($board-size, $num-colors))" />
     <xsl:apply-templates select="$initial-board" mode="render" />
-    <xsl:apply-templates select="$initial-board" mode="group" />
+    <xsl:result-document href="#rep" method="ixsl:replace-content">
+      <xsl:sequence select="$initial-board"/>
+    </xsl:result-document>
     <xsl:call-template name="controls" />
   </xsl:template>
 
+  <xsl:template match="input[@id eq 'hintbutton']" mode="ixsl:onclick">
+    <xsl:if test="$debug eq 'yes'">
+      <xsl:result-document href="#scenarios" method="ixsl:replace-content">
+        <xsl:sequence select="fi:scenarios(ixsl:page()//div[@id eq 'rep']/*:board, $hint-lookahead-depth)" />
+      </xsl:result-document>
+    </xsl:if>
+    <xsl:for-each select="ixsl:page()//*[@id eq 'hint']">
+      <ixsl:set-attribute name="style:background-color" select="fi:hint($hint-lookahead-depth, ixsl:page()//*[@id eq 'rep'])" />
+    </xsl:for-each>
+  </xsl:template>
+
+  <xsl:function name="fi:hint" as="xs:string">
+    <xsl:param name="lookahead" as="xs:integer" />
+    <xsl:param name="board" as="element(board)" />
+    <xsl:variable name="scenarios" select="fi:scenarios(ixsl:page()//div[@id eq 'rep']/*:board, $hint-lookahead-depth)" as="element(fi:scenario)" />
+    <xsl:variable name="max" select="xs:integer(max($scenarios//fi:scenario/@score))" as="xs:integer" />
+    <xsl:sequence select="if (count($scenarios//fi:scenario) eq 1) 
+                          then $scenarios/*/@color
+                          else ($scenarios//fi:scenario[xs:integer(@score) eq $max])[1]/ancestor::fi:scenario[last() - 1]/@color" />
+  </xsl:function>
+
+  <xsl:function name="fi:scenarios" as="element(fi:scenario)?" >
+    <!-- calculates scores (in terms of max. main area sizes) 
+         for the next $depth moves and all possible color options -->
+    <xsl:param name="board" as="element(*)" />
+    <xsl:param name="depth" as="xs:integer" />
+    <!-- watch out when developing multiplayer mode: explicit reference to x=1,y=1 here: -->
+    <xsl:variable name="main-area" select="$board/*:area[*:square[@x eq '1' and @y eq '1']]" as="element(*)" />
+    <fi:scenario color="{$main-area/@color}" score="{count($main-area/*:square)}">
+      <xsl:if test="$depth gt 0 and (count($board/*:area) gt 1)">
+        <!--         <xsl:for-each select="$colors[position() le $num-colors][not(. eq $main-area/@color)]"> -->
+        <xsl:variable name="adjacent-colors" select="distinct-values(fi:neighbors($main-area/*:square[not(@inside)], $board//*:square[not(@inside)])/../@color)" as="xs:string+"/>
+        <xsl:for-each select="$adjacent-colors">
+          <xsl:sequence select="fi:scenarios(fi:flood(1, 1, $board, .), $depth - 1)" />
+        </xsl:for-each>
+      </xsl:if>
+    </fi:scenario>
+  </xsl:function>
+
   <xsl:variable name="colors" as="xs:string+" 
-    select="('#22f', '#f9b', '#ff3', '#f33', '#2b4', '#3ff', 'brown', 'purple', 'black', 'white', 'orange', 'gray')" />
+    select="('#22f', '#f9b', '#ff3', '#f33', '#2b4', '#3ff', 'brown', 'purple', 'black', 'orange', 'gray')" />
 
   <xsl:template name="controls">
     <xsl:result-document href="#controls" method="ixsl:replace-content">
@@ -74,14 +119,13 @@
     </fi:board>
   </xsl:function>
 
-  <xsl:template match="fi:board" mode="group">
-    <xsl:result-document href="#rep" method="ixsl:replace-content">
-      <xsl:copy>
-        <xsl:copy-of select="@*" />
-        <xsl:sequence select="fi:group-squares(fi:square[1], (), fi:square)" />
-      </xsl:copy>
-    </xsl:result-document>
-  </xsl:template>
+  <xsl:function name="fi:group-board" as="element(fi:board)">
+    <xsl:param name="board" as="element(fi:board)" />
+    <fi:board>
+      <xsl:copy-of select="$board/@*" />
+      <xsl:sequence select="fi:group-squares($board/fi:square[1], (), $board/fi:square)" />
+    </fi:board>
+  </xsl:function>
 
   <!-- xsl:iterate might come in handy here. Without it, some recursion is necessary. -->
   <xsl:function name="fi:group-squares" as="element(*)+"><!-- result: (fi:square | fi:area)* -->
@@ -140,15 +184,7 @@
     <xsl:variable name="current-color" select="ixsl:page()//*[@id eq 'rep']/*:board/*:area[*:square[xs:integer(@x) eq $x and xs:integer(@y) eq $y]]/@color" />
 
     <xsl:if test="$color ne $current-color">
-      <xsl:variable name="flooded" as="element(board)?">
-        <!-- doesn't work: -->
-        <!-- <xsl:apply-templates select="id('rep', ixsl:page())/*:board" mode="flood" > -->
-        <xsl:apply-templates select="ixsl:page()//div[@id eq 'rep']/*:board" mode="flood">
-          <xsl:with-param name="x" select="$x" />
-          <xsl:with-param name="y" select="$y" />
-          <xsl:with-param name="color" select="$color" />
-        </xsl:apply-templates>
-      </xsl:variable>
+      <xsl:variable name="flooded" as="element(*)?" select="fi:flood(xs:integer($x), xs:integer($y), ixsl:page()//div[@id eq 'rep']/*:board, $color)" />
       <xsl:result-document href="#rep" method="ixsl:replace-content">
         <xsl:sequence select="$flooded" />
       </xsl:result-document>
@@ -181,28 +217,34 @@
     </xsl:if>
   </xsl:template>
 
-  <xsl:template match="*:board" mode="flood">
+  <xsl:function name="fi:neighboring-same-color-areas" as="element(*)*"><!-- result: fi:area* or area* -->
+    <xsl:param name="color" as="xs:string" /><!-- don't read $area's @color because it doesn't yet carry its after-flooding value -->
+    <xsl:param name="area" as="element(*)" />
+    <xsl:param name="board" as="element(*)" />
+    <xsl:if test="exists($board/*:area except $area)">
+      <xsl:sequence select="fi:neighbors(
+                              $area/*:square[not(@inside)], 
+                              ($board/*:area except $area)/*:square[not(@inside)]
+                            )/..[@color eq $color]" />
+    </xsl:if>
+  </xsl:function>
+
+  <xsl:function name="fi:flood" as="element(*)">
     <xsl:param name="x" as="xs:integer" />
     <xsl:param name="y" as="xs:integer" />
+    <xsl:param name="board" as="element(*)" />
     <xsl:param name="color" as="xs:string" />
-    <xsl:variable name="area" select="*:area[*:square[@x cast as xs:integer eq $x 
-                                                      and 
-                                                      @y cast as xs:integer eq $y]]" />
-    <xsl:variable name="target-neighboring-areas" 
-      select="fi:neighbors(
-                $area/*:square[not(@inside)], 
-                (*:area except $area)/*:square[not(@inside)]
-              )/..[@color eq $color]" as="element(*)*" />
-    <xsl:variable name="joinme" select="$area union $target-neighboring-areas" as="element(*)+" />
-    <xsl:copy>
-      <xsl:copy-of select="@*" />
+    <xsl:variable name="area" select="$board/*:area[*:square[xs:integer(@x) eq $x and xs:integer(@y) eq $y]]" as="element(*)" />
+    <xsl:variable name="joinme" select="$area union fi:neighboring-same-color-areas($color, $area, $board)" as="element(*)+" />
+    <fi:board>
+      <xsl:copy-of select="$board/@*" />
       <fi:area color="{$color}">
-        <xsl:apply-templates select="$joinme/*:square[not(@inside)]" mode="#current"/>
+        <xsl:apply-templates select="$joinme/*:square[not(@inside)]" mode="flood"/>
         <xsl:sequence select="$joinme/*:square[@inside]"/>
       </fi:area>
-      <xsl:sequence select="*:area except ($joinme)" />
-    </xsl:copy>
-  </xsl:template>
+      <xsl:sequence select="$board/*:area except ($joinme)" />
+    </fi:board>
+  </xsl:function>
 
   <xsl:function name="fi:neighborcount" as="xs:integer">
     <xsl:param name="x" as="xs:integer" />
@@ -222,6 +264,9 @@
   </xsl:template>
 
   <xsl:template match="*:board" mode="render">
+    <xsl:for-each select="ixsl:page()//*[@id eq 'hint']">
+      <ixsl:set-attribute name="style:background-color" select="'transparent'" />
+    </xsl:for-each>
     <xsl:result-document href="#board" method="ixsl:replace-content">
       <table>
         <tbody>
@@ -242,7 +287,7 @@
     <td style="background-color:{if (@color) then @color else ../@color}" data-coord="{@x}-{@y}">&#xfeff;</td>
   </xsl:template>
 
-  <xsl:template match="@* | *" mode=" flood group render">
+  <xsl:template match="@* | *" mode="flood group render">
     <xsl:copy>
       <xsl:apply-templates select="@* | node()" mode="#current"/>
     </xsl:copy>
