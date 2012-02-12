@@ -13,6 +13,10 @@ your peers. You can do that on Google+. If you
 do so, please send regards to my nemeses 
 +Liam Quin and +Anna Anna.
 
+If you want to develop locally in Chrome, you 
+need to use the -allow-file-access-from-files 
+option when invoking Chrome.
+
 
 (C) 2012, Gerrit Imsieke.  All rights reserved.
 Published under Simplified BSD License:

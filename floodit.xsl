@@ -19,18 +19,60 @@
 
 
   <xsl:template name="main">
+    <xsl:variable name="user-board-size" 
+      select="ixsl:page()//input[@id eq 'board-size']/@prop:value" as="xs:string?" />
+    <xsl:variable name="actual-board-size"
+      select="if (matches($user-board-size, '^\d\d?$')) 
+              then
+                if (xs:integer($user-board-size) = (1 to 20))
+                then xs:integer($user-board-size) 
+                else $board-size
+              else $board-size" as="xs:integer" />
+    <xsl:variable name="user-num-colors" 
+      select="ixsl:page()//input[@id eq 'num-colors']/@prop:value" as="xs:string?" />
+    <xsl:variable name="actual-num-colors" 
+      select="if (matches($user-num-colors, '^\d\d?$')) 
+              then
+                if (xs:integer($user-num-colors) = (1 to 11))
+                then xs:integer($user-num-colors) 
+                else $num-colors
+              else $num-colors" as="xs:integer" />
+    <xsl:variable name="user-max-moves" 
+      select="ixsl:page()//input[@id eq 'max-steps']/@prop:value" as="xs:string?" />
+    <xsl:variable name="actual-max-moves" 
+      select="if (matches($user-max-moves, '^\d\d?$'))
+              then
+                if (xs:integer($user-max-moves) = (1 to 45))
+                then xs:integer($user-max-moves)
+                else $max-moves
+              else $max-moves" as="xs:integer" />
+
     <xsl:result-document href="#maxsteps" method="ixsl:replace-content">
-      <xsl:value-of select="$max-moves"/>
+      <xsl:value-of select="$actual-max-moves"/>
     </xsl:result-document>
     <xsl:call-template name="step">
       <xsl:with-param name="count" select="0" />
     </xsl:call-template>
-    <xsl:variable name="initial-board" as="element(fi:board)" select="fi:group-board(fi:create-board($board-size, $num-colors))" />
+    <xsl:variable name="initial-board" as="element(fi:board)" select="fi:group-board(fi:create-board($actual-board-size, $actual-num-colors))" />
     <xsl:apply-templates select="$initial-board" mode="render" />
     <xsl:result-document href="#rep" method="ixsl:replace-content">
       <xsl:sequence select="$initial-board"/>
     </xsl:result-document>
-    <xsl:call-template name="controls" />
+    <xsl:call-template name="controls">
+      <xsl:with-param name="actual-num-colors" select="$actual-num-colors" />
+    </xsl:call-template>
+  </xsl:template>
+
+  <xsl:template match="input[@id eq 'newgamebutton']" mode="ixsl:onclick">
+    <ixsl:schedule-action wait="1">
+      <xsl:call-template name="score">
+        <xsl:with-param name="moves" select="0" />
+        <xsl:with-param name="actual-max-moves" select="1" />
+      </xsl:call-template>
+    </ixsl:schedule-action>
+    <ixsl:schedule-action wait="1">
+      <xsl:call-template name="main" />
+    </ixsl:schedule-action>
   </xsl:template>
 
   <xsl:template match="input[@id eq 'hintbutton']" mode="ixsl:onclick">
@@ -63,7 +105,6 @@
     <xsl:variable name="main-area" select="$board/*:area[*:square[@x eq '1' and @y eq '1']]" as="element(*)" />
     <fi:scenario color="{$main-area/@color}" score="{count($main-area/*:square)}">
       <xsl:if test="$depth gt 0 and (count($board/*:area) gt 1)">
-        <!--         <xsl:for-each select="$colors[position() le $num-colors][not(. eq $main-area/@color)]"> -->
         <xsl:variable name="adjacent-colors" select="distinct-values(fi:neighbors($main-area/*:square[not(@inside)], $board//*:square[not(@inside)])/../@color)" as="xs:string+"/>
         <xsl:for-each select="$adjacent-colors">
           <xsl:sequence select="fi:scenarios(fi:flood(1, 1, $board, .), $depth - 1)" />
@@ -76,11 +117,12 @@
     select="('#22f', '#f9b', '#ff3', '#f33', '#2b4', '#3ff', 'brown', 'purple', 'black', 'orange', 'gray')" />
 
   <xsl:template name="controls">
+    <xsl:param name="actual-num-colors" as="xs:integer" />
     <xsl:result-document href="#controls" method="ixsl:replace-content">
       <table>
         <tbody>
           <tr>
-            <xsl:for-each select="$colors[position() le $num-colors]">
+            <xsl:for-each select="$colors[position() le $actual-num-colors]">
               <td id="{translate(., '#', '_')}" style="background-color:{.}">&#xfeff;</td>
             </xsl:for-each>
           </tr>
@@ -91,8 +133,11 @@
 
   <xsl:template name="score">
     <xsl:param name="moves" as="xs:integer" />
+    <xsl:param name="actual-max-moves" as="xs:integer" />
     <xsl:result-document href="#score" method="ixsl:replace-content">
-      <xsl:value-of select="xs:integer(ixsl:page()//*[@id eq 'score']) + (10 * fi:pow2($max-moves - $moves))"/>
+      <xsl:value-of select="if ($moves eq 0) (: reset :)
+                            then 0
+                            else xs:integer(ixsl:page()//*[@id eq 'score']) + (10 * fi:pow2($actual-max-moves - $moves))"/>
     </xsl:result-document>
   </xsl:template>
 
@@ -112,7 +157,7 @@
         <xsl:variable name="x" select="." as="xs:integer" />
         <xsl:for-each select="1 to $size">
           <xsl:variable name="y" select="." as="xs:integer" />
-          <xsl:variable name="rnd" select="fi:rnd()" as="xs:integer" />
+          <xsl:variable name="rnd" select="fi:rnd($colorcount)" as="xs:integer" />
           <fi:square x="{$x}" y="{$y}" color="{$colors[$rnd]}" nc="{fi:neighborcount($x, $y)}" />
         </xsl:for-each>
       </xsl:for-each>
@@ -199,6 +244,9 @@
       <xsl:apply-templates select="$flooded" mode="render" />
   
       <xsl:variable name="step" as="xs:integer" select="xs:integer(ixsl:page()//*[@id eq 'step']) + 1" />
+
+      <xsl:variable name="actual-max-moves" as="xs:integer" select="xs:integer(ixsl:page()//*[@id eq 'maxsteps'])" />
+
       <xsl:call-template name="step">
         <xsl:with-param name="count" select="$step" />
       </xsl:call-template>
@@ -206,6 +254,7 @@
         <xsl:when test="count($flooded/*:area) eq 1">
           <xsl:call-template name="score">
             <xsl:with-param name="moves" select="$step" />
+            <xsl:with-param name="actual-max-moves" select="$actual-max-moves" />
           </xsl:call-template>
           <ixsl:schedule-action wait="1000">
             <xsl:call-template name="main" />
@@ -213,7 +262,7 @@
         </xsl:when>
         <xsl:otherwise>
           <xsl:choose>
-            <xsl:when test="$step ge $max-moves">
+            <xsl:when test="$step ge $actual-max-moves">
               <xsl:result-document href="#controls" method="ixsl:replace-content">
                 Game over! Reload the HTML page for another game.
               </xsl:result-document>
@@ -300,9 +349,9 @@
     </xsl:copy>
   </xsl:template>
 
-  <xsl:variable name="random-stmt" select="concat('Math.ceil(Math.random() * ', $num-colors, ')')" as="xs:string" />
   <xsl:function name="fi:rnd" as="xs:integer">
-    <xsl:sequence select="ixsl:eval($random-stmt) cast as xs:integer"/>
+    <xsl:param name="spread" as="xs:integer" />
+    <xsl:sequence select="ixsl:eval(concat('Math.ceil(Math.random() * ', $spread, ')')) cast as xs:integer"/>
   </xsl:function>
 
   <xsl:function name="fi:pow2" as="xs:integer">

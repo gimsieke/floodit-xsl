@@ -9,12 +9,19 @@
     <script type="application/xslt+xml" language="xslt2.0" src="floodit.xsl" data-initial-template="main"></script>
   </head>
   <body>
+		<section id="settings">
+			<h2>Settings</h2>
+			<p>Board size (1..20): <input type="text" size="2" id="board-size"/></p>
+			<p>Number of colors (1..11): <input type="text" size="2" id="num-colors"/></p>
+			<p>Max. step count (1..45): <input type="text" size="2" id="max-steps"/></p>
+			<p><input type="button" id="newgamebutton" value="New game" /></p>
+		</section>
     <section id="game">
       <h1>floodit.xsl</h1>
-      <p>v1.2</p>
+      <p>v1.3</p>
       <div id="status"></div>
       <div id="controls">Buttons</div>
-      <div id="hint-container"> <input type="button" id="hintbutton" value="Hint" />  
+      <div id="hint-container"> <input type="button" id="hintbutton" value="Hint (slow)" />
 				<table><tbody><tr><td id="hint">&#xfeff;</td></tr></tbody></table>
 			</div>
       <div id="scenarios"></div>
@@ -28,7 +35,7 @@
     </section>
     <section id="credits">
 			<p>This is an XSLT 2.0 implementation of the popular <a href="https://plus.google.com/games/479261262298">Flood-It game</a>.</p>
-      <p>It has been tested to work with Chrome 16+, Firefox 9, and IE 9.</p>
+      <p>It has been tested to work with Chrome 16+ (slow, but recommended), Firefox 9+ (very slow; annoying “unresponsive script” warnings), and IE 9 (very slow).</p>
       <p>© 2012 <a href="http://gplus.to/gimsieke">Gerrit Imsieke</a> (or <a href="http://twitter.com/gimsieke">gimsieke</a> on Twitter). Fork it on <a href="http://github.com/gimsieke/floodit-xsl">github</a>.</p>
       <p>View the local XSLT <a href="floodit.xsl">source</a> code (or view it on <a href="https://github.com/gimsieke/floodit-xsl/blob/master/floodit.xsl">github</a>).</p>
     </section>

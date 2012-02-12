@@ -31,3 +31,15 @@ td {
 #rep {
 	display:none;
 }
+
+#settings { 
+	border: 1px solid gray;
+	display: inline-block;
+	padding: 5px;
+	float: right;
+}
+
+#settings > p {  
+	margin-bottom: 0;
+	margin-top: 0;
+}
