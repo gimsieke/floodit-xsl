@@ -181,7 +181,14 @@
     <xsl:variable name="x" select="1" as="xs:integer" /><!-- x=1,x=1 is the default for a single-player game. -->
     <xsl:variable name="y" select="1" as="xs:integer" /><!-- Multiplayer not implemented yet, though. -->
     <!-- The @id attributes of the controls table's tds contain the color values (# replaced with _): -->
-    <xsl:variable name="current-color" select="ixsl:page()//*[@id eq 'rep']/*:board/*:area[*:square[xs:integer(@x) eq $x and xs:integer(@y) eq $y]]/@color" />
+    <xsl:variable name="current-color" 
+      select="ixsl:page()//*[@id eq 'rep']
+                /*:board
+                  /*:area[
+                    *:square[
+                      xs:integer(@x) eq $x and xs:integer(@y) eq $y
+                    ]
+                  ]/@color" />
 
     <xsl:if test="$color ne $current-color">
       <xsl:variable name="flooded" as="element(*)?" select="fi:flood(xs:integer($x), xs:integer($y), ixsl:page()//div[@id eq 'rep']/*:board, $color)" />
