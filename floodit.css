@@ -33,13 +33,15 @@ td {
 }
 
 #settings { 
-	border: 1px solid gray;
+	margin: 0 20px 20px 20px;
+	border: 1px solid #bbe;
 	display: inline-block;
 	padding: 5px;
 	float: right;
 }
 
-#settings > p {  
+
+#settings p {  
 	margin-bottom: 0;
 	margin-top: 0;
 }

@@ -24,7 +24,7 @@
     <xsl:variable name="actual-board-size"
       select="if (matches($user-board-size, '^\d\d?$')) 
               then
-                if (xs:integer($user-board-size) = (1 to 20))
+                if (xs:integer($user-board-size) = (2 to 20))
                 then xs:integer($user-board-size) 
                 else $board-size
               else $board-size" as="xs:integer" />
@@ -33,7 +33,7 @@
     <xsl:variable name="actual-num-colors" 
       select="if (matches($user-num-colors, '^\d\d?$')) 
               then
-                if (xs:integer($user-num-colors) = (1 to 11))
+                if (xs:integer($user-num-colors) = (2 to 11))
                 then xs:integer($user-num-colors) 
                 else $num-colors
               else $num-colors" as="xs:integer" />
@@ -62,6 +62,7 @@
       <xsl:with-param name="actual-num-colors" select="$actual-num-colors" />
     </xsl:call-template>
   </xsl:template>
+
 
   <xsl:template match="input[@id eq 'newgamebutton']" mode="ixsl:onclick">
     <ixsl:schedule-action wait="1">
@@ -158,7 +159,7 @@
         <xsl:for-each select="1 to $size">
           <xsl:variable name="y" select="." as="xs:integer" />
           <xsl:variable name="rnd" select="fi:rnd($colorcount)" as="xs:integer" />
-          <fi:square x="{$x}" y="{$y}" color="{$colors[$rnd]}" nc="{fi:neighborcount($x, $y)}" />
+          <fi:square x="{$x}" y="{$y}" color="{$colors[$rnd]}" nc="{fi:neighborcount($x, $y, $size)}" />
         </xsl:for-each>
       </xsl:for-each>
     </fi:board>
@@ -305,8 +306,9 @@
   <xsl:function name="fi:neighborcount" as="xs:integer">
     <xsl:param name="x" as="xs:integer" />
     <xsl:param name="y" as="xs:integer" />
-    <xsl:variable name="x-fringe-reduction" select="if (min(($x, $board-size - $x + 1)) eq 1) then 1 else 0" as="xs:integer" />
-    <xsl:variable name="y-fringe-reduction" select="if (min(($y, $board-size - $y + 1)) eq 1) then 1 else 0" as="xs:integer" />
+    <xsl:param name="actual-board-size" as="xs:integer" />
+    <xsl:variable name="x-fringe-reduction" select="if (min(($x, $actual-board-size - $x + 1)) eq 1) then 1 else 0" as="xs:integer" />
+    <xsl:variable name="y-fringe-reduction" select="if (min(($y, $actual-board-size - $y + 1)) eq 1) then 1 else 0" as="xs:integer" />
     <xsl:sequence select="4 - $x-fringe-reduction - $y-fringe-reduction" />
   </xsl:function>
 
@@ -357,6 +359,60 @@
   <xsl:function name="fi:pow2" as="xs:integer">
     <xsl:param name="pow" as="xs:integer"/>
     <xsl:sequence select="if ($pow eq 0) then 2 else 2 * fi:pow2($pow - 1)"/>
+  </xsl:function>
+
+
+
+  <xsl:template match="input[@id eq 'newgamebutton-direct']" mode="ixsl:onclick">
+    <ixsl:schedule-action wait="1">
+      <xsl:call-template name="score">
+        <xsl:with-param name="moves" select="0" />
+        <xsl:with-param name="actual-max-moves" select="1" />
+      </xsl:call-template>
+    </ixsl:schedule-action>
+    <ixsl:schedule-action wait="1">
+      <xsl:call-template name="direct" />
+    </ixsl:schedule-action>
+  </xsl:template>
+
+  <xsl:template name="direct">
+    <xsl:variable name="user-max-moves" 
+      select="ixsl:page()//input[@id eq 'max-steps']/@prop:value" as="xs:string?" />
+    <xsl:variable name="actual-max-moves" 
+      select="if (matches($user-max-moves, '^\d\d?$'))
+              then
+                if (xs:integer($user-max-moves) = (1 to 45))
+                then xs:integer($user-max-moves)
+                else $max-moves
+              else $max-moves" as="xs:integer" />
+    <xsl:result-document href="#maxsteps" method="ixsl:replace-content">
+      <xsl:value-of select="$actual-max-moves"/>
+    </xsl:result-document>
+    <xsl:call-template name="step">
+      <xsl:with-param name="count" select="0" />
+    </xsl:call-template>
+    <xsl:variable name="initial-board" as="element(fi:board)" select="fi:group-board(fi:parse-csv-board(ixsl:page()//textarea[@id eq 'directinput']/@prop:value))" />
+    <xsl:apply-templates select="$initial-board" mode="render" />
+    <xsl:result-document href="#rep" method="ixsl:replace-content">
+      <xsl:sequence select="$initial-board"/>
+    </xsl:result-document>
+    <xsl:call-template name="controls">
+      <xsl:with-param name="actual-num-colors" select="count(distinct-values($initial-board/*:area/@color))" />
+    </xsl:call-template>
+  </xsl:template>
+
+  <xsl:function name="fi:parse-csv-board" as="element(fi:board)">
+    <xsl:param name="csv" as="xs:string" />
+    <fi:board>
+      <xsl:for-each select="tokenize($csv, '\s*\n')">
+        <xsl:variable name="y" select="position()" as="xs:integer" />
+        <xsl:variable name="row-elts" select="tokenize(., ',\s*')" as="xs:string+" />
+        <xsl:for-each select="$row-elts">
+          <xsl:variable name="x" select="position()" as="xs:integer" />
+          <fi:square x="{$x}" y="{$y}" color="{$colors[xs:integer(current())]}" nc="{fi:neighborcount($x, $y, count($row-elts))}" />
+        </xsl:for-each>
+      </xsl:for-each>
+    </fi:board>
   </xsl:function>
 
 </xsl:stylesheet>
