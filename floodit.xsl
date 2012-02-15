@@ -90,7 +90,7 @@
   <xsl:function name="fi:hint" as="xs:string">
     <xsl:param name="lookahead" as="xs:integer" />
     <xsl:param name="board" as="element(board)" />
-    <xsl:variable name="scenarios" select="fi:scenarios(ixsl:page()//div[@id eq 'rep']/*:board, $hint-lookahead-depth)" as="element(fi:scenario)" />
+    <xsl:variable name="scenarios" select="fi:scenarios(ixsl:page()//div[@id eq 'rep']/*:board, $lookahead)" as="element(fi:scenario)" />
     <xsl:variable name="max" select="xs:integer(max($scenarios//fi:scenario/@score))" as="xs:integer" />
     <xsl:sequence select="if (count($scenarios//fi:scenario) eq 1) 
                           then $scenarios/*/@color
