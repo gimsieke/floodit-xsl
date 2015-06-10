@@ -2,11 +2,10 @@ An XSLT 2.0 port of the popular Flood-It game
 (https://plus.google.com/games/479261262298)
 
 It's using Saxonica's Saxon-CE processor,
-http://www.saxonica.com/ce/doc/contents.html
+http://www.saxonica.com/ce/index.xml
 
 Please note that Saxon CE is not included in
-this repository. It can be licensed from
-Saxonica.
+this repository. 
 
 Also note that it's more fun to compete against
 your peers. You can do that on Google+. If you
